@@ -1,0 +1,25 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.env
+
+# Node
+node_modules/
+dist/
+
+# Data and models (these go in DVC, not Git)
+data/*
+!data/.gitkeep
+*.pkl
+*.joblib
+*.pt
+*.h5
+
+# MLflow
+mlruns/
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
