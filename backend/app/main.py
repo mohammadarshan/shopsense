@@ -1,4 +1,9 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
+from sqlalchemy import func, select, text
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models import Order, Product, User
 
 app = FastAPI(
     title="ShopSense API",
@@ -13,11 +18,15 @@ def root():
 
 
 @app.get("/health")
-def health():
-    return {"status": "ok"}
+def health(db: Session = Depends(get_db)):
+    db.execute(text("SELECT 1"))
+    return {"status": "ok", "database": "connected"}
 
 
-@app.get("/hello/{name}")
-def hello(name: str, excited: bool = False):
-    greeting = f"Hello, {name}"
-    return {"greeting": greeting + "!" if excited else greeting}
+@app.get("/stats")
+def stats(db: Session = Depends(get_db)):
+    return {
+        "users": db.scalar(select(func.count()).select_from(User)),
+        "products": db.scalar(select(func.count()).select_from(Product)),
+        "orders": db.scalar(select(func.count()).select_from(Order)),
+    }
