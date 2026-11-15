@@ -5,12 +5,15 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Order, Product, User
 
+from app.routers import auth
+
 app = FastAPI(
     title="ShopSense API",
     description="E-commerce backend with ML-powered features",
     version="0.1.0",
 )
 
+app.include_router(auth.router)
 
 @app.get("/")
 def root():
