@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Order, Product, User
-
 from app.routers import auth
+from app.dependencies import require_admin
 
 app = FastAPI(
     title="ShopSense API",
@@ -27,7 +27,7 @@ def health(db: Session = Depends(get_db)):
 
 
 @app.get("/stats")
-def stats(db: Session = Depends(get_db)):
+def stats(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
     return {
         "users": db.scalar(select(func.count()).select_from(User)),
         "products": db.scalar(select(func.count()).select_from(Product)),
