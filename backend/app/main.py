@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Order, Product, User
-from app.routers import auth
+from app.routers import auth, products
 from app.dependencies import require_admin
 
 app = FastAPI(
@@ -14,6 +14,7 @@ app = FastAPI(
 )
 
 app.include_router(auth.router)
+app.include_router(products.router)
 
 @app.get("/")
 def root():
