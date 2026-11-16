@@ -7,7 +7,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, PlainSerializer
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, PlainSerializer, computed_field
 
 
 class UserCreate(BaseModel):
@@ -104,3 +104,61 @@ class ProductUpdate(BaseModel):
     description: str | None = None
     price: Decimal | None = Field(default=None, ge=0, max_digits=10, decimal_places=2)
     stock: int | None = Field(default=None, ge=0)
+
+
+class ProductBrief(BaseModel):
+    """Minimal product info shown inside orders."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    category: str | None
+
+
+class CartItemAdd(BaseModel):
+    product_id: int
+    quantity: int = Field(default=1, ge=1, le=99)
+
+
+class CartItemUpdate(BaseModel):
+    quantity: int = Field(ge=1, le=99)
+
+
+class CartItemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    product: ProductOut
+    quantity: int
+
+    @computed_field
+    @property
+    def line_total(self) -> Money:
+        return self.product.price * self.quantity
+
+
+class CartOut(BaseModel):
+    items: list[CartItemOut]
+    total: Money
+
+
+class OrderItemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    product: ProductBrief
+    quantity: int
+    unit_price: Money
+
+    @computed_field
+    @property
+    def line_total(self) -> Money:
+        return self.unit_price * self.quantity
+
+
+class OrderOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    status: str
+    total: Money
+    created_at: datetime
+    items: list[OrderItemOut]
