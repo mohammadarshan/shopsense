@@ -23,3 +23,6 @@ mlruns/
 .vscode/
 .idea/
 .DS_Store
+
+# Testing cache
+.pytest_cache/
