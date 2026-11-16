@@ -39,7 +39,6 @@ def list_products(
     db: Session = Depends(get_db),
 ):
     """List products with optional search, filters, sorting and pagination."""
-    # Build the query step by step, adding a filter only if it was provided.
     query = select(Product)
     if search:
         # ilike = case-insensitive match. The value is sent as a bound
@@ -55,7 +54,6 @@ def list_products(
 
     # Count all matches (before paging) by wrapping the filtered query as a subquery.
     total = db.scalar(select(func.count()).select_from(query.subquery()))
-    # Skip the rows of earlier pages: page 1 -> offset 0, page 2 -> offset page_size, ...
     items = db.scalars(
         query.order_by(*SORTS[sort]).offset((page - 1) * page_size).limit(page_size)
     ).all()

@@ -22,15 +22,18 @@ def count_orders(session_factory):
 
 
 def test_cart_requires_login(client):
+    """The cart is closed to anonymous requests."""
     assert client.get("/cart").status_code == 401
 
 
 def test_new_cart_is_empty(client, make_headers):
+    """A new user's cart has no items and a total of 0."""
     r = client.get("/cart", headers=make_headers())
     assert r.json() == {"items": [], "total": 0}
 
 
 def test_adding_the_same_product_twice_adds_quantities(client, make_headers, make_product):
+    """Re-adding a product raises its quantity instead of creating a second line."""
     pid = make_product(stock=10)
     headers = make_headers()
     add(client, headers, pid, 2)
@@ -42,6 +45,7 @@ def test_adding_the_same_product_twice_adds_quantities(client, make_headers, mak
 
 
 def test_cart_totals_use_database_prices(client, make_headers, make_product):
+    """Line and cart totals are computed from the stored product price."""
     pid = make_product(price=10, stock=10)
     r = add(client, make_headers(), pid, 3)
     body = r.json()
@@ -50,17 +54,20 @@ def test_cart_totals_use_database_prices(client, make_headers, make_product):
 
 
 def test_cannot_add_more_than_stock(client, make_headers, make_product):
+    """The cart refuses quantities above the available stock."""
     pid = make_product(stock=2)
     assert add(client, make_headers(), pid, 5).status_code == 409
 
 
 def test_cannot_add_unknown_product(client, make_headers):
+    """Adding a product id that doesn't exist gives 404."""
     assert add(client, make_headers(), 999999).status_code == 404
 
 
 def test_checkout_creates_order_reduces_stock_and_empties_cart(
     client, make_headers, make_product, session_factory
 ):
+    """Checkout creates the order, deducts stock and empties the cart."""
     pid = make_product(price=10, stock=5)
     headers = make_headers()
     add(client, headers, pid, 3)
@@ -77,12 +84,14 @@ def test_checkout_creates_order_reduces_stock_and_empties_cart(
 
 
 def test_checkout_with_empty_cart_is_rejected(client, make_headers):
+    """Checking out an empty cart is a 400, not an empty order."""
     assert client.post("/orders", headers=make_headers()).status_code == 400
 
 
 def test_checkout_fails_cleanly_when_stock_ran_out(
     client, make_headers, make_product, session_factory
 ):
+    """If stock runs out after the item was carted, checkout fails and changes nothing."""
     pid = make_product(stock=5)
     headers = make_headers()
     add(client, headers, pid, 3)
@@ -100,6 +109,7 @@ def test_checkout_fails_cleanly_when_stock_ran_out(
 
 
 def test_order_keeps_the_price_it_was_bought_at(client, make_headers, make_product):
+    """Changing a product's price later doesn't change past orders."""
     admin = make_headers("boss@gmail.com", role="admin")
     shopper = make_headers("shopper@gmail.com")
     pid = make_product(price=10, stock=5)
@@ -114,6 +124,7 @@ def test_order_keeps_the_price_it_was_bought_at(client, make_headers, make_produ
 
 
 def test_user_cannot_read_someone_elses_order(client, make_headers, make_product):
+    """Users can only see their own orders; others' look like a 404."""
     alice = make_headers("alice@gmail.com")
     bob = make_headers("bob@gmail.com")
     pid = make_product(stock=5)
@@ -126,6 +137,7 @@ def test_user_cannot_read_someone_elses_order(client, make_headers, make_product
 
 
 def test_order_history_lists_newest_first(client, make_headers, make_product):
+    """Order history is returned newest first."""
     pid = make_product(stock=10)
     headers = make_headers()
     add(client, headers, pid, 1)

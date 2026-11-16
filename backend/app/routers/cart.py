@@ -1,3 +1,4 @@
+"""Shopping cart endpoints for the logged-in user: view, add, change quantity, remove, clear."""
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -26,6 +27,7 @@ def cart_response(db: Session, user: User) -> dict:
 
 @router.get("", response_model=CartOut)
 def get_cart(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Return the user's cart with line totals and the cart total."""
     return cart_response(db, user)
 
 
@@ -35,6 +37,11 @@ def add_to_cart(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    """Add a product to the cart, or raise its quantity if it's already there.
+
+    Stock is checked here so the user hears early, but it isn't reserved:
+    checkout checks again, because stock may have changed since.
+    """
     product = db.get(Product, payload.product_id)
     if product is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Product not found")
@@ -59,6 +66,7 @@ def update_cart_item(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    """Set the quantity of a product already in the cart (replaces, doesn't add)."""
     item = db.get(CartItem, (user.id, product_id))
     if item is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Item is not in your cart")
@@ -77,6 +85,7 @@ def remove_from_cart(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    """Remove one product from the cart."""
     item = db.get(CartItem, (user.id, product_id))
     if item is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Item is not in your cart")
@@ -87,6 +96,7 @@ def remove_from_cart(
 
 @router.delete("", response_model=CartOut)
 def clear_cart(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Remove everything from the cart."""
     db.execute(delete(CartItem).where(CartItem.user_id == user.id))
     db.commit()
     return cart_response(db, user)

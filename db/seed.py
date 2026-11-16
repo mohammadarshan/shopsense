@@ -4,7 +4,8 @@ WARNING: this wipes users, products, orders, order_items, reviews and
 cart_items before loading. It is for initial seeding only.
 
 The CSVs are reshaped with pandas to fit our tables, then written in one
-transaction. Run it from the repo root with the database container running.
+transaction. Paths are resolved from this file, so it can be run from any
+folder (e.g. `python db/seed.py`) while the database container is running.
 """
 import os
 from pathlib import Path

@@ -1,5 +1,8 @@
 """SQLAlchemy ORM models: one Python class per database table.
 
+The tables themselves are created by db/schema.sql, which also holds the CHECK
+constraints; keep these classes in step with it when either changes.
+
 The olist_* columns keep the original IDs from the Olist dataset so seeded
 rows can be traced back to the source CSVs. They are nullable because rows
 created through the API have no Olist ID.
@@ -27,8 +30,8 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(120))
     role: Mapped[str] = mapped_column(String(20), default="customer")
     olist_customer_unique_id: Mapped[str | None] = mapped_column(String(40), unique=True)
-    # server_default: Postgres fills in the time, so it's correct even for
-    # rows inserted outside the app (e.g. by the seed script).
+    # server_default: SQLAlchemy leaves this column out of the INSERT and lets
+    # the DEFAULT NOW() in db/schema.sql fill it in, using the database's clock.
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     orders: Mapped[list["Order"]] = relationship(back_populates="user")

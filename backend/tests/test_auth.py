@@ -9,6 +9,7 @@ NEW_USER = {"email": "new@gmail.com", "password": "password123", "full_name": "N
 
 
 def test_register_returns_user_without_password(client):
+    """The register response never leaks the password or its hash."""
     r = client.post("/auth/register", json=NEW_USER)
     assert r.status_code == 201
     body = r.json()
@@ -19,29 +20,34 @@ def test_register_returns_user_without_password(client):
 
 
 def test_register_duplicate_email_is_conflict(client):
+    """An email can only be registered once (409, not a second account)."""
     client.post("/auth/register", json=NEW_USER)
     r = client.post("/auth/register", json=NEW_USER)
     assert r.status_code == 409
 
 
 def test_register_email_is_case_insensitive(client):
+    """Emails differing only in case count as the same account."""
     client.post("/auth/register", json={**NEW_USER, "email": "New@Gmail.com"})
     r = client.post("/auth/register", json=NEW_USER)
     assert r.status_code == 409
 
 
 def test_register_cannot_choose_role(client):
+    """A client can't make itself an admin by sending a role at sign-up."""
     r = client.post("/auth/register", json={**NEW_USER, "role": "admin"})
     assert r.status_code == 201
     assert r.json()["role"] == "customer"
 
 
 def test_register_rejects_short_password(client):
+    """Passwords under the minimum length are refused with 422."""
     r = client.post("/auth/register", json={**NEW_USER, "password": "short"})
     assert r.status_code == 422
 
 
 def test_login_returns_token(client):
+    """Correct credentials return a bearer token in the OAuth2 format."""
     client.post("/auth/register", json=NEW_USER)
     r = client.post(
         "/auth/login", data={"username": "new@gmail.com", "password": "password123"}
@@ -52,6 +58,7 @@ def test_login_returns_token(client):
 
 
 def test_login_errors_do_not_reveal_which_part_was_wrong(client):
+    """Wrong password and unknown email give identical 401s, so emails can't be enumerated."""
     client.post("/auth/register", json=NEW_USER)
     wrong_password = client.post(
         "/auth/login", data={"username": "new@gmail.com", "password": "wrongwrong"}
@@ -65,6 +72,7 @@ def test_login_errors_do_not_reveal_which_part_was_wrong(client):
 
 
 def test_seeded_placeholder_account_cannot_log_in(client, session_factory):
+    """Seeded accounts (non-bcrypt placeholder hash) get a clean 401, not a 500."""
     with session_factory() as db:
         db.add(
             User(
@@ -77,14 +85,16 @@ def test_seeded_placeholder_account_cannot_log_in(client, session_factory):
     r = client.post(
         "/auth/login", data={"username": "user1@example.com", "password": "anything123"}
     )
-    assert r.status_code == 401  # a clean 401, not a 500 crash
+    assert r.status_code == 401
 
 
 def test_me_requires_a_token(client):
+    """/auth/me is closed to requests without a token."""
     assert client.get("/auth/me").status_code == 401
 
 
 def test_me_returns_the_logged_in_user(client, make_headers):
+    """/auth/me returns the user the token belongs to."""
     headers = make_headers("me@gmail.com")
     r = client.get("/auth/me", headers=headers)
     assert r.status_code == 200
@@ -92,6 +102,7 @@ def test_me_returns_the_logged_in_user(client, make_headers):
 
 
 def test_token_signed_with_wrong_secret_is_rejected(client):
+    """A token forged with another key is rejected."""
     forged = jwt.encode(
         {"sub": "1", "exp": datetime.now(timezone.utc) + timedelta(hours=1)},
         "not-the-real-secret-not-the-real-secret",
@@ -102,6 +113,7 @@ def test_token_signed_with_wrong_secret_is_rejected(client):
 
 
 def test_expired_token_is_rejected(client):
+    """A correctly signed but expired token is rejected."""
     expired = jwt.encode(
         {"sub": "1", "exp": datetime.now(timezone.utc) - timedelta(minutes=1)},
         settings.jwt_secret_key,

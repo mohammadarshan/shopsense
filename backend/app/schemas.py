@@ -20,12 +20,11 @@ class UserCreate(BaseModel):
     @field_validator("password")
     @classmethod
     def password_fits_bcrypt(cls, v: str) -> str:
-        """Reject passwords longer than 72 bytes (not characters).
+        """Reject passwords longer than 72 bytes, the most bcrypt can hash.
 
         max_length=72 counts characters, but accented letters or emoji take
         several bytes each, so this extra byte check is still needed.
         """
-        # bcrypt only handles the first 72 bytes, so reject longer passwords
         if len(v.encode("utf-8")) > 72:
             raise ValueError("Password must be at most 72 bytes")
         return v

@@ -1,3 +1,4 @@
+"""Order endpoints: check out the cart, and read the logged-in user's orders."""
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -18,6 +19,11 @@ ORDER_LOAD = selectinload(Order.items).selectinload(OrderItem.product)
 
 @router.post("", response_model=OrderOut, status_code=status.HTTP_201_CREATED)
 def checkout(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Turn the user's cart into an order, take the items out of stock and empty the cart.
+
+    Runs as one transaction: if any item is short of stock, nothing changes
+    and the cart is left as it was.
+    """
     cart_items = db.scalars(
         select(CartItem).where(CartItem.user_id == user.id).order_by(CartItem.product_id)
     ).all()
@@ -55,7 +61,6 @@ def checkout(db: Session = Depends(get_db), user: User = Depends(get_current_use
         product = products[c.product_id]
         product.stock -= c.quantity
         total += product.price * c.quantity
-        # unit_price is a snapshot: later price changes don't rewrite history
         order.items.append(
             OrderItem(product_id=product.id, quantity=c.quantity, unit_price=product.price)
         )
@@ -65,6 +70,8 @@ def checkout(db: Session = Depends(get_db), user: User = Depends(get_current_use
     db.execute(delete(CartItem).where(CartItem.user_id == user.id))
     db.commit()  # order, items, stock changes and cart wipe: all or nothing
 
+    # commit() expires loaded objects, so reload the order with its items and
+    # products in one go rather than lazy-loading them while building the response.
     return db.scalars(select(Order).where(Order.id == order.id).options(ORDER_LOAD)).one()
 
 
@@ -75,6 +82,7 @@ def my_orders(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    """List the user's own orders, newest first, one page at a time."""
     return db.scalars(
         select(Order)
         .where(Order.user_id == user.id)
@@ -91,6 +99,7 @@ def get_order(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    """Return one of the user's own orders, or 404."""
     order = db.scalar(
         select(Order)
         .where(Order.id == order_id, Order.user_id == user.id)
