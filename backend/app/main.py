@@ -11,11 +11,22 @@ from app.models import Order, Product, User
 from app.routers import auth, products, cart, orders
 from app.dependencies import require_admin
 
+from fastapi.middleware.cors import CORSMiddleware
+
 # title/description/version show up in the auto-generated docs at /docs.
 app = FastAPI(
     title="ShopSense API",
     description="E-commerce backend with ML-powered features",
     version="0.1.0",
+)
+
+# Browsers block pages from reading responses from another origin unless the
+# API allows it. This allows the React dev server (and only it) to call us.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Each router lives in its own file to keep this one small; including it here
